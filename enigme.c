@@ -24,34 +24,17 @@ void draw_text(SDL_Renderer *r, TTF_Font *font, const char *text, int x, int y)
     SDL_DestroyTexture(t);
 }
 
-// ✅ BACKGROUND
-void draw_background(SDL_Renderer *r)
-{
-    SDL_Surface *s = IMG_Load("images/background.png");
-    if(!s)
-    {
-        printf("Background error: %s\n", IMG_GetError());
-        return;
-    }
-
-    SDL_Texture *t = SDL_CreateTextureFromSurface(r,s);
-    SDL_RenderCopy(r,t,NULL,NULL);
-
-    SDL_FreeSurface(s);
-    SDL_DestroyTexture(t);
-}
-
-// ✅ MENU
 int menu(SDL_Renderer *r, TTF_Font *font)
 {
     SDL_Event e;
 
     while(1)
     {
-        draw_background(r);
+        SDL_SetRenderDrawColor(r,0,0,0,255);
+        SDL_RenderClear(r);
 
-        draw_text(r,font,"SEVEN GAME",280,200);
-        draw_text(r,font,"Press ENTER to START",220,300);
+        draw_text(r,font,"SEVEN GAME",300,200);
+        draw_text(r,font,"Press ENTER to START",230,300);
 
         SDL_RenderPresent(r);
 
@@ -68,7 +51,6 @@ int menu(SDL_Renderer *r, TTF_Font *font)
     }
 }
 
-// ✅ SON MP3
 void play_sound(const char *path)
 {
     Mix_Music *music = Mix_LoadMUS(path);
@@ -77,7 +59,6 @@ void play_sound(const char *path)
     Mix_PlayMusic(music,1);
 }
 
-// ✅ IMAGE DANS MEME PAGE
 void show_feedback(SDL_Renderer *r, const char *imgPath)
 {
     SDL_Surface *s = IMG_Load(imgPath);
@@ -85,18 +66,17 @@ void show_feedback(SDL_Renderer *r, const char *imgPath)
 
     SDL_Texture *t = SDL_CreateTextureFromSurface(r,s);
 
-    SDL_Rect pos = {520,180,200,200};
+    SDL_Rect imgRect = {520,180,220,220};
 
-    SDL_RenderCopy(r,t,NULL,&pos);
+    SDL_RenderCopy(r,t,NULL,&imgRect);
     SDL_RenderPresent(r);
 
-    SDL_Delay(700);
+    SDL_Delay(800);
 
     SDL_DestroyTexture(t);
     SDL_FreeSurface(s);
 }
 
-// ✅ QUESTION
 int ask(SDL_Renderer *r, TTF_Font *font, Question q)
 {
     SDL_Event e;
@@ -108,7 +88,8 @@ int ask(SDL_Renderer *r, TTF_Font *font, Question q)
         int timeLeft = 10 - (SDL_GetTicks()-start)/1000;
         if(timeLeft <= 0) return 0;
 
-        draw_background(r);
+        SDL_SetRenderDrawColor(r,0,0,0,255);
+        SDL_RenderClear(r);
 
         draw_text(r,font,q.q,50,80);
         draw_text(r,font,q.r1,50,180);
@@ -128,15 +109,21 @@ int ask(SDL_Renderer *r, TTF_Font *font, Question q)
 
             if(e.type == SDL_KEYDOWN)
             {
-                if(e.key.keysym.sym == SDLK_1 || e.key.keysym.sym == SDLK_KP_1) rep = 1;
-                if(e.key.keysym.sym == SDLK_2 || e.key.keysym.sym == SDLK_KP_2) rep = 2;
-                if(e.key.keysym.sym == SDLK_3 || e.key.keysym.sym == SDLK_KP_3) rep = 3;
+                if(e.key.keysym.sym == SDLK_1 || e.key.keysym.sym == SDLK_KP_1)
+                    rep = 1;
+
+                if(e.key.keysym.sym == SDLK_2 || e.key.keysym.sym == SDLK_KP_2)
+                    rep = 2;
+
+                if(e.key.keysym.sym == SDLK_3 || e.key.keysym.sym == SDLK_KP_3)
+                    rep = 3;
             }
         }
 
         SDL_Delay(16);
     }
 
+    // feedback in same page
     if(rep == q.correct)
     {
         play_sound("sound/correct.mp3");
@@ -151,7 +138,6 @@ int ask(SDL_Renderer *r, TTF_Font *font, Question q)
     }
 }
 
-// ✅ JEU
 int jouer(SDL_Renderer *r, TTF_Font *font)
 {
     if(!menu(r,font)) return 0;
@@ -177,32 +163,4 @@ int jouer(SDL_Renderer *r, TTF_Font *font)
     }
 
     return score;
-}
-
-// ✅ ANIMATION FIN
-void animation_fin(SDL_Renderer *r, TTF_Font *font, int score)
-{
-    int y = 600;
-
-    while(y > 250)
-    {
-        draw_background(r);
-
-        char txt[50];
-        sprintf(txt,"Score: %d / 10",score);
-
-        draw_text(r,font,txt,300,150);
-
-        if(score > 5)
-            draw_text(r,font,"YOU WIN",300,y);
-        else
-            draw_text(r,font,"YOU LOSE",300,y);
-
-        SDL_RenderPresent(r);
-
-        y -= 5;
-        SDL_Delay(20);
-    }
-
-    SDL_Delay(2000);
 }
