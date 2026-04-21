@@ -1,6 +1,10 @@
 #include "enigme.h"
 #include <stdio.h>
-
+#include"joueur"
+#include"ennemi"
+#include"background"
+#include"enigme2"
+#include"minimap"
 int main()
 {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
