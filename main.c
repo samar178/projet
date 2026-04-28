@@ -2,151 +2,167 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
+#include <math.h>
 #include "background/background.h"
 #include "joueur/joueur.h"
 #include "ennemi/ennemi.h"
 #include "minimap/minimap.h"
 
-// Fonction de collision (Hitbox)
-int testCollision(SDL_Rect a, SDL_Rect b) {
-    if (a.x + a.w <= b.x || a.x >= b.x + b.w || a.y + a.h <= b.y || a.y >= b.y + b.h) return 0;
-    return 1;
+// Fonction pour dessiner les barres (Santé et Endurance)
+void dessinerBarreEntite(SDL_Renderer* renderer, int x, int y, int w, int h, float valeur, float max_valeur, SDL_Color couleur) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_Rect fond = {x, y, w, h};
+    SDL_RenderFillRect(renderer, &fond);
+    if (valeur < 0) valeur = 0;
+    int largeur = (int)((valeur / max_valeur) * w);
+    SDL_SetRenderDrawColor(renderer, couleur.r, couleur.g, couleur.b, 255);
+    SDL_Rect remplissage = {x, y, largeur, h};
+    SDL_RenderFillRect(renderer, &remplissage);
 }
 
 int main(int argc, char* argv[]) {
-    // --- INITIALISATION ---
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) return 1;
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) return 1;
-    if (TTF_Init() == -1) return 1;
-
-    SDL_Window* window = SDL_CreateWindow("7SINS - Project", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, 0);
+    if (SDL_Init(SDL_INIT_VIDEO) < 0 || TTF_Init() == -1) return 1;
+    SDL_Window* window = SDL_CreateWindow("7SINS - Système de Combat", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920, 1080, 0);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-    // --- VARIABLES ---
-    Background bg; 
-    Joueur j; 
-    Ennemi e20; 
-    Minimap mn;
-
-    const int SEUIL_VERROUILLAGE = 7680; // 9600 - 1920
+    Background bg; Joueur j; Ennemi e20; Minimap mn;
+    const int SEUIL_VERROUILLAGE = 7680;
 
     initBackground(&bg, renderer, 1); 
     initJoueur(&j, renderer); 
     initEnnemi(&e20, renderer, SEUIL_VERROUILLAGE + 960); 
     initMinimap(&mn, renderer);
 
-    int run = 1; 
+    // Initialisation des stats
+    j.vie = 3;           // Coeurs pour les obstacles
+    j.sante = 100.0f;    // Barre rouge pour le combat
+    j.endurance = 100.0f; 
+    j.invulnerable = 0;
+    e20.sante = 100.0f;
+
+    SDL_Texture* texCoeur = IMG_LoadTexture(renderer, "background/ressources/coeur.png");
+    SDL_Color rouge = {255, 0, 0}, vert = {0, 255, 0};
+    int run = 1, gameOver = 0;
     SDL_Event event;
     const Uint8* keys = SDL_GetKeyboardState(NULL);
 
     while (run) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) run = 0;
-            
-            // CONTRAINTE : Touche K pour tuer l'ennemi (Debug)
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_k) {
-                e20.etat = E_MORT;
-                e20.frame = 0;
-            }
-            gestionEntrees(&j, keys, &event);
-        }
-
-        // Détermination de la vitesse (Marche ou Sprint)
-        int v = (j.etat == SPRINT || j.etat == SPRINT_G) ? 14 : 8;
-        int absX_joueur = j.pos.x + bg.camera_pos.x;
-
-        // --- LOGIQUE DE MOUVEMENT ET VERROUILLAGE ---
-        if (keys[SDL_SCANCODE_RIGHT]) {
-            bg.direction = 0;
-            // SI on atteint le seuil ET que l'ennemi est vivant
-            if (bg.camera_pos.x >= SEUIL_VERROUILLAGE && !e20.mort_terminee) {
-                bg.camera_pos.x = SEUIL_VERROUILLAGE; // VERROUILLAGE STRICT
-                if (j.pos.x < 1800) j.pos.x += v;
-            } 
-            // SINON Scrolling si le joueur dépasse le milieu
-            else if (j.pos.x >= 960 && bg.camera_pos.x < SEUIL_VERROUILLAGE) {
-                scrolling(&bg, v);
-            } 
-            // SINON Marche simple à l'écran
-            else if (j.pos.x < 1850) {
-                j.pos.x += v;
+            if (!gameOver) {
+                if (j.etat != MORT) gestionEntrees(&j, keys, &event);
+            } else if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_r) {
+                initJoueur(&j, renderer); initBackground(&bg, renderer, 1); 
+                initEnnemi(&e20, renderer, SEUIL_VERROUILLAGE + 960);
+                j.vie = 3; j.sante = 100.0f; j.endurance = 100.0f; gameOver = 0;
             }
         }
-        
-        if (keys[SDL_SCANCODE_LEFT]) {
-            bg.direction = 1;
-            if (j.pos.x <= 960 && bg.camera_pos.x > 0) {
-                // Bloquer le retour en arrière si on est dans la zone de combat
-                int limite_g = (bg.camera_pos.x >= SEUIL_VERROUILLAGE && !e20.mort_terminee) ? SEUIL_VERROUILLAGE : 0;
-                if (bg.camera_pos.x > limite_g) {
-                    scrolling(&bg, v);
-                } else if (j.pos.x > 50) {
-                    j.pos.x -= v;
+
+        if (!gameOver) {
+            if (j.invulnerable > 0) j.invulnerable--;
+            if (j.endurance < 100.0f) j.endurance += 0.4f;
+
+            if ((j.vie <= 0 || j.sante <= 0) && j.etat != MORT) {
+                j.etat = MORT; j.frame = 0;
+            }
+            if (j.etat == MORT && j.mort_terminee) gameOver = 1;
+
+            if (j.etat != MORT) {
+                int v = (j.etat == SPRINT || j.etat == SPRINT_G) ? 14 : 8;
+                int old_jx = j.pos.x;
+
+                // Mouvements et Scrolling
+                if (keys[SDL_SCANCODE_RIGHT]) {
+                    bg.direction = 0;
+                    if (bg.camera_pos.x >= SEUIL_VERROUILLAGE && !e20.mort_terminee) {
+                        if (j.pos.x < 1800) j.pos.x += v;
+                    } else if (j.pos.x >= 960 && bg.camera_pos.x < SEUIL_VERROUILLAGE) scrolling(&bg, v);
+                    else if (j.pos.x < 1850) j.pos.x += v;
                 }
-            } else if (j.pos.x > 50) {
-                j.pos.x -= v;
-            }
-        }
-
-        updatePhysique(&j);
-
-        // --- GESTION ENNEMI ET COLLISIONS PHYSIQUES ---
-        if (bg.camera_pos.x >= SEUIL_VERROUILLAGE - 1920) e20.actif = 1;
-
-        if (e20.actif && !e20.mort_terminee) {
-            updateEnnemi(&e20);
-            SDL_Rect j_abs = {absX_joueur, j.pos.y, j.pos.w, j.pos.h};
-            
-            if (testCollision(j_abs, e20.pos)) {
-                if (j.etat == FRAPPE || j.etat == FRAPPE_G) {
-                    if (e20.etat != E_MORT) { e20.etat = E_MORT; e20.frame = 0; }
-                } else {
-                    // CONTRAINTE : Répulsion physique (le joueur ne traverse pas l'ennemi)
-                    if (j.pos.x < (e20.pos.x - bg.camera_pos.x)) j.pos.x -= 20;
-                    else j.pos.x += 20;
+                if (keys[SDL_SCANCODE_LEFT]) {
+                    bg.direction = 1;
+                    if (j.pos.x <= 960 && bg.camera_pos.x > 0) scrolling(&bg, v);
+                    else if (j.pos.x > 50) j.pos.x -= v;
                 }
+
+                updatePhysique(&j);
+                int absX_joueur = j.pos.x + bg.camera_pos.x;
+                SDL_Rect j_hitbox = {absX_joueur, j.pos.y, j.pos.w, j.pos.h};
+                
+                // 1. Obstacles (Dégâts aux cœurs)
+                for (int i = 0; i < bg.nb_obstacles; i++) {
+                    if (bg.tab_obstacles[i].actif && collisionTrigonometrique(j_hitbox, bg.tab_obstacles[i].pos)) {
+                        if (j.invulnerable == 0) {
+                            j.vie--; j.invulnerable = 60; j.pos.x = old_jx - 150;
+                        }
+                        break;
+                    }
+                }
+
+                // 2. Ennemi (Combat et Dégâts réalistes)
+                if (bg.camera_pos.x >= SEUIL_VERROUILLAGE - 1920) e20.actif = 1;
+                if (e20.actif && !e20.mort_terminee) {
+                    updateEnnemi(&e20);
+                    if (collisionTrigonometrique(j_hitbox, e20.pos)) {
+                        if (j.etat == FRAPPE || j.etat == FRAPPE_G) {
+                            // Dégâts réduits pour plus de réalisme
+                            float degats = (j.endurance > 20.0f) ? 0.4f : 0.1f; 
+                            e20.sante -= degats;
+                            j.endurance -= 0.5f;
+                            if (e20.sante <= 0) { e20.sante = 0; e20.etat = E_MORT; }
+                        } else if (j.invulnerable == 0) {
+                            j.sante -= 0.5f; // L'ennemi baisse la barre de santé
+                        }
+                    }
+                }
+
+                // Transition Niveau 2
+                if (bg.niveau_actuel == 1 && e20.mort_terminee && j.pos.x >= 1800) {
+                    libererBackground(&bg); initBackground(&bg, renderer, 2); 
+                    j.pos.x = 100; bg.camera_pos.x = 0;
+                    initEnnemi(&e20, renderer, SEUIL_VERROUILLAGE + 960); 
+                }
+                updateMinimap(&mn, absX_joueur, e20.pos.x);
+            } else {
+                updatePhysique(&j); 
             }
         }
 
-        // Mise à jour de la minimap
-        updateMinimap(&mn, absX_joueur, e20.pos.x);
-
-        // --- TRANSITION NIVEAU ---
-        if (bg.niveau_actuel == 1 && absX_joueur >= 9500 && e20.mort_terminee) {
-            libererBackground(&bg);
-            initBackground(&bg, renderer, 2);
-            j.pos.x = 100; 
-            bg.camera_pos.x = 0;
-            // On réinitialise l'ennemi pour le niveau suivant
-            initEnnemi(&e20, renderer, SEUIL_VERROUILLAGE + 960); 
-        }
-
-        // --- RENDU ---
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
         afficherBackground(bg, renderer);
         updateEtAfficherDecors(&bg, renderer);
+        afficherObstacles(bg, renderer);
         
-        if (e20.actif) {
-            afficherEnnemi(e20, renderer, bg.camera_pos);
+        if (!gameOver) {
+            if (e20.actif) {
+                afficherEnnemi(e20, renderer, bg.camera_pos);
+                if (!e20.mort_terminee) {
+                    int ex = e20.pos.x - bg.camera_pos.x;
+                    dessinerBarreEntite(renderer, ex, e20.pos.y - 30, e20.pos.w, 8, e20.sante, 100.0f, rouge);
+                }
+            }
+            if (j.invulnerable % 10 < 5) {
+                afficherJoueur(j, renderer);
+                if (j.etat != MORT) {
+                    dessinerBarreEntite(renderer, j.pos.x, j.pos.y - 30, j.pos.w, 8, j.sante, 100.0f, rouge);
+                    dessinerBarreEntite(renderer, j.pos.x, j.pos.y - 22, j.pos.w, 6, j.endurance, 100.0f, vert);
+                }
+            }
+            for(int i = 0; i < j.vie; i++) {
+                SDL_Rect rC = {20 + (i * 60), 20, 50, 50};
+                SDL_RenderCopy(renderer, texCoeur, NULL, &rC);
+            }
+            afficherBarreNiveau(&bg, renderer);
+            afficherMinimap(mn, renderer, bg.niveau_actuel, !e20.mort_terminee);
+        } else {
+            SDL_Surface* sMsg = TTF_RenderText_Blended(bg.font, "GAME OVER - R: REJOUER", rouge);
+            SDL_Texture* tMsg = SDL_CreateTextureFromSurface(renderer, sMsg);
+            SDL_Rect rMsg = {1920/2 - sMsg->w/2, 1080/2 - sMsg->h/2, sMsg->w, sMsg->h};
+            SDL_RenderCopy(renderer, tMsg, NULL, &rMsg);
+            SDL_FreeSurface(sMsg); SDL_DestroyTexture(tMsg);
         }
-
-        afficherJoueur(j, renderer);
-        afficherBarreNiveau(&bg, renderer);
-        afficherTemps(&bg, renderer);
-        
-        // Minimap
-        afficherMinimap(mn, renderer, bg.niveau_actuel, !e20.mort_terminee);
-
         SDL_RenderPresent(renderer);
     }
-
-    // --- CLEANUP ---
-    Liberer(&mn);
     libererJoueur(&j); libererBackground(&bg); libererEnnemi(&e20);
-    SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window);
-    TTF_Quit(); IMG_Quit(); SDL_Quit();
-
     return 0;
 }

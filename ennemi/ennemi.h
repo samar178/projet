@@ -15,7 +15,8 @@ typedef struct {
     int frame;         
     int timer;         
     int direction;     
-    
+    float sante;
+    float endurance;
     int posMin, posMax; 
     int vitesse;
     EtatEnnemi etat;

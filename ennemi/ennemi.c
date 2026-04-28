@@ -14,16 +14,18 @@ void initEnnemi(Ennemi* e, SDL_Renderer* renderer, int x_depart) {
         e->anim_mort[i] = IMG_LoadTexture(renderer, path);
     }
 
-    e->y_sol = 650; 
+    e->y_sol = 700; 
     e->pos = (SDL_Rect){x_depart, e->y_sol - 200, 150, 200};
-    
+    e->sante = 100.0f;
+    e->endurance = 100.0f; // <--- INITIALISE À 100 ICI
     e->posMin = x_depart - 400;
     e->posMax = x_depart + 400;
     e->vitesse = 4;
     e->direction = 1; 
     e->frame = 0; e->timer = 0;
     e->etat = E_PATROUILLE;
-    e->actif = 0; e->mort_terminee = 0;
+    e->actif = 0; 
+    e->mort_terminee = 0;
 }
 
 void updateEnnemi(Ennemi* e) {
