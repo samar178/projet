@@ -104,14 +104,21 @@ int main(int argc, char* argv[]) {
                 if (e20.actif && !e20.mort_terminee) {
                     updateEnnemi(&e20);
                     if (collisionTrigonometrique(j_hitbox, e20.pos)) {
+                        
                         if (j.etat == FRAPPE || j.etat == FRAPPE_G) {
-                            // Dégâts réduits pour plus de réalisme
-                            float degats = (j.endurance > 20.0f) ? 0.4f : 0.1f; 
-                            e20.sante -= degats;
-                            j.endurance -= 0.5f;
+                            // Dégâts basés sur l'endurance restante
+                            if (j.endurance > 5.0f) {
+                                float degats = (j.endurance / 100.0f) * 0.8f; 
+                                e20.sante -= degats;
+                                j.endurance -= 1.2f; // Consomme de l'endurance par coup
+                            } else {
+                                e20.sante -= 0.02f; // Épuisé = quasiment aucun dégât
+                            }
+                            
                             if (e20.sante <= 0) { e20.sante = 0; e20.etat = E_MORT; }
-                        } else if (j.invulnerable == 0) {
-                            j.sante -= 0.5f; // L'ennemi baisse la barre de santé
+                            
+                        } else if (j.invulnerable == 0 && e20.etat == E_ATTAQUE) { // <-- L'ennemi doit être en train d'attaquer
+                            j.sante -= 0.5f; 
                         }
                     }
                 }
