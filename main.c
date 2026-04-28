@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "enigme.h"
 #include <stdio.h>
 #include"joueur"
@@ -48,5 +49,35 @@ int main()
 
     SDL_Delay(4000);
 
+=======
+#include "game.h"
+
+int main(int argc, char* argv[]) {
+    srand(time(NULL));
+    
+    Game game;
+    if (init_game(&game) != 0) {
+        printf("Failed to initialize game!\n");
+        return -1;
+    }
+    
+    int running = 1;
+    SDL_Event event;
+    
+    while (running) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            }
+            handle_events(&game, &event);
+        }
+        
+        update(&game);
+        render(&game);
+        SDL_Delay(16);
+    }
+    
+    cleanup_game(&game);
+>>>>>>> 382a5b2 (first commit)
     return 0;
 }

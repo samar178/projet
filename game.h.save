@@ -1,0 +1,86 @@
+#ifndef GAME_H
+#define GAME_H
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <math.h>
+
+#define SCREEN_WIDTH 1917
+#define SCREEN_HEIGHT 947
+
+typedef struct {
+    SDL_Rect rect;
+    SDL_Texture* texture;    int correct_x;
+    int correct_y;
+    int grid_x;
+    int grid_y;
+    int is_placed;
+} PuzzlePiece;
+
+typedef struct {
+    SDL_Rect rect;
+    SDL_Texture* texture;
+    int is_hovered;
+} Button;
+
+typedef enum {
+    SCREEN_SELECTION,
+    SCREEN_PUZZLE
+} GameState;
+
+typedef struct {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    GameState state;
+    
+    // Screen 1
+    SDL_Texture* background;
+    SDL_Texture* images[5];
+    SDL_Rect image_rects[5];
+    Button window_btn;
+    Button fullscreen_btn;
+    int selected_image;
+    int is_fullscreen;
+    
+    // Screen 2
+    SDL_Texture* chosen_image;
+    PuzzlePiece pieces[9];
+    SDL_Rect collection_grid[9];
+    SDL_Rect collection_zone;
+    int pieces_placed;
+    
+    // Timer
+    Uint32 start_time;
+    int timer_active;
+    TTF_Font* font;
+    
+    // Drag and drop
+    int dragging_piece;
+    int drag_offset_x;
+    int drag_offset_y;
+    
+    // Effet de victoire
+    int victory_effect;
+    float victory_angle;
+    float victory_scale;
+    Uint32 victory_start_time;
+} Game;
+
+int init_game(Game* game);
+void load_assets(Game* game);
+void handle_events(Game* game, SDL_Event* event);
+void update(Game* game);
+void render(Game* game);
+void render_screen_selection(Game* game);
+void render_screen_puzzle(Game* game);
+void cleanup_game(Game* game);
+void init_puzzle(Game* game);
+void set_fullscreen(Game* game, int fullscreen);
+
+#endif
+EOF
