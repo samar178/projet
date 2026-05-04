@@ -22,9 +22,9 @@ typedef struct {
 } ObjetDecor;
 
 typedef struct {
-    SDL_Texture* image;
+    SDL_Texture* image;      // Était manquant ou mal nommé
     SDL_Rect camera_pos;
-    int direction;
+    int direction;           // Était manquant
     int niveau_actuel;
     
     ObjetDecor avion;
@@ -38,10 +38,12 @@ typedef struct {
     
     TTF_Font* font;
     Uint32 startTime;
+    Uint32 tempsEcoule;
     SDL_Rect tempsPos;
     SDL_Texture* tempsTex;
 } Background;
 
+// Vérifie que tous ces prototypes sont présents pour éviter les "implicit declaration"
 void initBackground(Background* b, SDL_Renderer* renderer, int niveau);
 void initObstacles(Background* b, SDL_Renderer* renderer, int niveau_actuel);
 void scrolling(Background* b, int dx);
@@ -52,4 +54,5 @@ void afficherBarreNiveau(Background* b, SDL_Renderer* renderer);
 void afficherTemps(Background* b, SDL_Renderer* renderer);
 void libererBackground(Background* b);
 int collisionTrigonometrique(SDL_Rect a, SDL_Rect b);
+
 #endif

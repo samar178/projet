@@ -6,16 +6,8 @@
 
 // Définition des états du joueur
 typedef enum {
-    IDLE,
-    MARCHE,
-    RECULE,
-    SPRINT,
-    SPRINT_G,
-    SAUT,
-    ACCROUPI,
-    FRAPPE,
-    FRAPPE_G,
-    MORT  // <--- L'état qui manquait
+    IDLE, MARCHE, RECULE, SPRINT, SPRINT_G,
+    SAUT, ACCROUPI, FRAPPE, FRAPPE_G, MORT
 } EtatJoueur;
 
 typedef struct {
@@ -31,7 +23,7 @@ typedef struct {
     SDL_Texture* anim_saut[5];
     SDL_Texture* anim_frappe[5];
     SDL_Texture* anim_frappe_g[5];
-    SDL_Texture* anim_mort[5]; // <--- Le tableau qui manquait
+    SDL_Texture* anim_mort[5];
 
     // Paramètres physiques
     int y_sol;
@@ -46,14 +38,15 @@ typedef struct {
     
     // Statistiques de jeu
     int vie;
-    float sante;      // Barre rouge
-    float endurance;  // Barre verte
+    float sante;      
+    float endurance;  
     int invulnerable;
-    int mort_terminee; // <--- La variable qui manquait
+    int mort_terminee; 
+    
+    int score; // NOUVEAU : Variable pour stocker le score total
     
 } Joueur;
 
-// Prototypes des fonctions
 void initJoueur(Joueur* j, SDL_Renderer* renderer);
 void gestionEntrees(Joueur* j, const Uint8* keys, SDL_Event* e);
 void updatePhysique(Joueur* j);

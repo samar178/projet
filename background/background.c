@@ -4,7 +4,7 @@
 #include <time.h>
 #include <math.h>
 
-// Fonction utilitaire interne pour définir les tailles
+// Fonction utilitaire interne pour définir les tailles des obstacles
 void configurerTailleObstacle(Obstacle* obs, TypeObstacle type) {
     obs->type = type;
     if (type == BARRIERE) {
@@ -50,7 +50,6 @@ void initObstacles(Background* bg, SDL_Renderer* renderer, int niveau_actuel) {
     int i = 0;
 
     if (niveau_actuel == 2) {
-        // --- 1. DÉBUT DU NIVEAU 2 : PREMIER DOUBLE FIXE ---
         configurerTailleObstacle(&bg->tab_obstacles[i], VOITURE);
         bg->tab_obstacles[i].pos.x = x_actuel;
         bg->tab_obstacles[i].pos.y = 700 - bg->tab_obstacles[i].pos.h + 5;
@@ -60,13 +59,10 @@ void initObstacles(Background* bg, SDL_Renderer* renderer, int niveau_actuel) {
         bg->tab_obstacles[i].pos.y = 700 - bg->tab_obstacles[i].pos.h + 5;
         bg->tab_obstacles[i].actif = 1; i++;
         
-        x_actuel += 800; // Espacement réduit dès le départ
+        x_actuel += 800;
 
-        // --- 2. MILIEU : PLUS DENSE ET PLUS ALÉATOIRE ---
         while(x_actuel < limite_x - 3200 && i < MAX_OBSTACLES - 6) {
-            // Augmentation de la probabilité de doubles obstacles (60% au lieu de 40%)
             int est_double = (rand() % 100) < 60; 
-
             configurerTailleObstacle(&bg->tab_obstacles[i], rand() % 3);
             bg->tab_obstacles[i].pos.x = x_actuel;
             bg->tab_obstacles[i].pos.y = 700 - bg->tab_obstacles[i].pos.h + 5;
@@ -80,12 +76,9 @@ void initObstacles(Background* bg, SDL_Renderer* renderer, int niveau_actuel) {
                 bg->tab_obstacles[i].actif = 1;
                 l = bg->tab_obstacles[i].pos.w; i++;
             }
-
-            // Espacement réduit (entre 450 et 750 pixels au lieu de 800+)
             x_actuel += l + (rand() % 300 + 450); 
         }
 
-        // --- 3. FIN DU NIVEAU 2 : LES DEUX TRIPLES (TRIANGLES) ---
         for(int t = 0; t < 2; t++) {
             x_actuel += 400;
             configurerTailleObstacle(&bg->tab_obstacles[i], VOITURE);
@@ -100,13 +93,10 @@ void initObstacles(Background* bg, SDL_Renderer* renderer, int niveau_actuel) {
             bg->tab_obstacles[i].pos.x = x_actuel + 100;
             bg->tab_obstacles[i].pos.y = 700 - 120 - 100; 
             bg->tab_obstacles[i].actif = 1; i++;
-            
             x_actuel += 1000; 
         }
         bg->nb_obstacles = i;
-
     } else {
-        // --- NIVEAU 1 : RESTE IDENTIQUE ---
         while(x_actuel < limite_x - 2800 && i < MAX_OBSTACLES - 4) {
             configurerTailleObstacle(&bg->tab_obstacles[i], i % 3);
             bg->tab_obstacles[i].pos.x = x_actuel;
@@ -127,7 +117,6 @@ void initObstacles(Background* bg, SDL_Renderer* renderer, int niveau_actuel) {
     }
 }
 
-// Les fonctions de rendu (scrolling, afficherObstacles, etc.) restent les mêmes
 void scrolling(Background* b, int dx) {
     if (b->direction == 0 && b->camera_pos.x < 9600 - 1920) b->camera_pos.x += dx;
     else if (b->direction == 1 && b->camera_pos.x > 0) b->camera_pos.x -= dx;
@@ -158,20 +147,43 @@ void afficherObstacles(Background b, SDL_Renderer* renderer) {
     }
 }
 
-void afficherBackground(Background b, SDL_Renderer* renderer) { SDL_RenderCopy(renderer, b.image, &b.camera_pos, NULL); }
+void afficherBackground(Background b, SDL_Renderer* renderer) { 
+    SDL_RenderCopy(renderer, b.image, &b.camera_pos, NULL); 
+}
+
 void afficherBarreNiveau(Background* b, SDL_Renderer* renderer) {
     float progression = (float)b->camera_pos.x / (9600 - 1920);
-    SDL_Rect contour = {50, 50, 300, 30}, plein = {50, 50, (int)(progression * 300), 30};
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); SDL_RenderDrawRect(renderer, &contour);
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); SDL_RenderFillRect(renderer, &plein);
+    
+    SDL_Rect contour = {20, 50, 300, 30};
+    SDL_Rect plein = {20, 50, (int)(progression * 300), 30};
+    
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); 
+    SDL_RenderDrawRect(renderer, &contour);
+    
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); 
+    SDL_RenderFillRect(renderer, &plein);
 }
+
 void afficherTemps(Background* b, SDL_Renderer* renderer) {
-    Uint32 elapsed = (SDL_GetTicks() - b->startTime) / 1000;
-    char total[20]; sprintf(total, "TIME: %02d:%02d", elapsed / 60, elapsed % 60);
-    SDL_Color blanc = {255, 255, 255}; SDL_Surface* s = TTF_RenderText_Blended(b->font, total, blanc);
-    if (b->tempsTex) SDL_DestroyTexture(b->tempsTex);
-    b->tempsTex = SDL_CreateTextureFromSurface(renderer, s); SDL_RenderCopy(renderer, b->tempsTex, NULL, &b->tempsPos); SDL_FreeSurface(s);
+    // On utilise la variable tempsEcoule (mise à jour dans le main)[cite: 2, 3]
+    Uint32 secondesTotales = b->tempsEcoule / 1000;
+    Uint32 minutes = secondesTotales / 60;
+    Uint32 secondes = secondesTotales % 60;
+
+    char tempsChaine[20];
+    sprintf(tempsChaine, "TIME: %02d:%02d", minutes, secondes);
+    SDL_Color blanc = {255, 255, 255, 255};
+    
+    SDL_Surface* s = TTF_RenderText_Blended(b->font, tempsChaine, blanc);
+    if (s) {
+        SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
+        SDL_Rect pos = {850, 50, s->w, s->h}; // Utilise la position définie[cite: 2]
+        SDL_RenderCopy(renderer, t, NULL, &pos);
+        SDL_FreeSurface(s);
+        SDL_DestroyTexture(t);
+    }
 }
+
 void libererBackground(Background* b) {
     if (b->image) SDL_DestroyTexture(b->image);
     if (b->avion.tex) SDL_DestroyTexture(b->avion.tex);
@@ -182,26 +194,17 @@ void libererBackground(Background* b) {
     if (b->tempsTex) SDL_DestroyTexture(b->tempsTex);
     if (b->font) TTF_CloseFont(b->font);
 }
+
 int collisionTrigonometrique(SDL_Rect a, SDL_Rect b) {
-    // 1. Centres (inchangés)
     float x1 = a.x + a.w / 2.0f;
     float y1 = a.y + a.h / 2.0f;
     float x2 = b.x + b.w / 2.0f;
     float y2 = b.y + b.h / 2.0f;
 
-    // 2. Utilisation du CERCLE INSCRIT avec une légère augmentation
-    // On calcule le rayon de base (inscrit)
-    float r1_base = (a.w < a.h) ? (a.w / 2.0f) : (a.h / 2.0f);
-    float r2_base = (b.w < b.h) ? (b.w / 2.0f) : (b.h / 2.0f);
+    float r1 = (a.w < a.h) ? (a.w / 2.0f) : (a.h / 2.0f);
+    float r2 = (b.w < b.h) ? (b.w / 2.0f) : (b.h / 2.0f);
 
-    // On augmente les rayons de 20% (multiplié par 1.2)
-    // C'est ici que vous pouvez ajuster : 1.1 pour moins, 1.3 pour plus
-    float r1 = r1_base * 1.2f;
-    float r2 = r2_base * 1.2f;
-
-    // 3. Calcul de la distance (Pythagore)
     float distance = sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 
-    // Collision si la distance est inférieure à la somme des rayons augmentés
     return (distance <= (r1 + r2));
 }

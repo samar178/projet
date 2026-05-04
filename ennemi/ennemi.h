@@ -26,7 +26,8 @@ typedef struct {
 } Ennemi;
 
 void initEnnemi(Ennemi* e, SDL_Renderer* renderer, int x_depart);
-void updateEnnemi(Ennemi* e);
+// Dans ennemi.h
+void updateEnnemi(Ennemi* e, SDL_Rect player_hitbox);
 void afficherEnnemi(Ennemi e, SDL_Renderer* renderer, SDL_Rect camera);
 void libererEnnemi(Ennemi* e);
 

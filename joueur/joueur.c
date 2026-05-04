@@ -27,19 +27,19 @@ void initJoueur(Joueur* j, SDL_Renderer* renderer) {
         sprintf(path, "joueur/ressources/frappe_g_%d.png", i + 1); 
         j->anim_frappe_g[i] = IMG_LoadTexture(renderer, path);
         
-        // AJOUT : Chargement des images de mort
-        sprintf(path, "mort_%d.png", i + 1);
+        sprintf(path, "joueur/ressources/mort_%d.png", i + 1); 
         j->anim_mort[i] = IMG_LoadTexture(renderer, path);
     }
 
     // --- Statistiques et Physique ---
-    j->y_sol = 750; 
-    j->pos = (SDL_Rect){100, j->y_sol - 200, 150, 200};
+    j->y_sol = 700; 
+    j->pos = (SDL_Rect){100, 700 - 200, 150, 200}; 
     j->vie = 3;
-    j->sante = 100.0f;      // Barre rouge
-    j->endurance = 100.0f;  // Barre verte
+    j->sante = 100.0f;
+    j->endurance = 100.0f;
     j->invulnerable = 0;
     j->mort_terminee = 0;
+    j->score = 0; // NOUVEAU : Initialisation du score
     
     j->etat = IDLE;
     j->direction = 0; 
@@ -50,26 +50,22 @@ void initJoueur(Joueur* j, SDL_Renderer* renderer) {
 }
 
 void gestionEntrees(Joueur* j, const Uint8* keys, SDL_Event* e) {
-    // Si le joueur est en train de mourir, on bloque tout
     if (j->etat == MORT) return;
 
     if (e->type == SDL_KEYDOWN && e->key.repeat == 0) {
-        // Attaque (Touche X)
         if (e->key.keysym.scancode == SDL_SCANCODE_X && j->etat != FRAPPE && j->etat != FRAPPE_G) {
             j->etat = (j->direction == 1) ? FRAPPE_G : FRAPPE;
             j->frame = 0; j->timer = 0;
             return;
         }
-        // Saut (Espace)
         if (e->key.keysym.scancode == SDL_SCANCODE_SPACE && j->nb_sauts < 2) {
-            j->vel_y = -20; 
+            j->vel_y = -22; 
             j->nb_sauts++;
             j->etat = SAUT;
             j->frame = 0;
         }
     }
 
-    // Si on est en train de frapper, on ne peut pas bouger
     if (j->etat == FRAPPE || j->etat == FRAPPE_G) return;
 
     if (keys[SDL_SCANCODE_LCTRL]) {
@@ -77,22 +73,21 @@ void gestionEntrees(Joueur* j, const Uint8* keys, SDL_Event* e) {
     } 
     else if (keys[SDL_SCANCODE_RIGHT]) {
         j->direction = 0;
-        j->etat = keys[SDL_SCANCODE_LSHIFT] ? SPRINT : MARCHE;
+        j->etat = (keys[SDL_SCANCODE_LSHIFT]) ? SPRINT : MARCHE;
     } 
     else if (keys[SDL_SCANCODE_LEFT]) {
         j->direction = 1;
-        j->etat = keys[SDL_SCANCODE_LSHIFT] ? SPRINT_G : MARCHE; 
+        j->etat = (keys[SDL_SCANCODE_LSHIFT]) ? SPRINT_G : MARCHE; 
     } 
-    else {
+    else if (j->etat != SAUT) {
         j->etat = IDLE;
     }
 }
 
 void updatePhysique(Joueur* j) {
-    // 1. Gestion de la Mort
     if (j->etat == MORT) {
         j->timer++;
-        if (j->timer > 12) { // Vitesse lente pour la mort
+        if (j->timer > 12) {
             j->timer = 0;
             if (j->frame < 4) j->frame++;
             else j->mort_terminee = 1;
@@ -100,29 +95,29 @@ void updatePhysique(Joueur* j) {
         return; 
     }
 
-    // 2. Gravité et Saut
-    j->y_sol += (int)j->vel_y;
     j->pos.h = (j->etat == ACCROUPI) ? 100 : 200;
 
-    if (j->y_sol > 700) {
+    j->vel_y += 1.2; 
+    j->y_sol += (int)j->vel_y;
+
+    if (j->y_sol >= 700) {
         j->y_sol = 700;
         j->vel_y = 0;
         j->nb_sauts = 0;
-    } else {
-        j->vel_y += 1; // Gravité
+        if (j->etat == SAUT) j->etat = IDLE;
     }
 
     j->pos.y = j->y_sol - j->pos.h;
 
-    // 3. Animation et Invulnérabilité
     if (j->invulnerable > 0) j->invulnerable--;
 
     j->timer++;
-    if (j->timer > 8) {
+    int vitesseAnim = (j->etat == SPRINT || j->etat == SPRINT_G) ? 5 : 8;
+    
+    if (j->timer > vitesseAnim) {
         j->timer = 0;
         j->frame++;
         
-        // Reset des animations d'attaque
         if ((j->etat == FRAPPE || j->etat == FRAPPE_G) && j->frame >= 5) {
             j->etat = IDLE;
             j->frame = 0;
@@ -131,7 +126,6 @@ void updatePhysique(Joueur* j) {
 }
 
 void afficherJoueur(Joueur j, SDL_Renderer* renderer) {
-    // Effet de clignotement si blessé
     if (j.invulnerable > 0 && (SDL_GetTicks() / 100) % 2 == 0) return;
 
     SDL_Texture* t = j.texture_idle;
@@ -146,7 +140,7 @@ void afficherJoueur(Joueur j, SDL_Renderer* renderer) {
         case ACCROUPI: t = j.texture_accroupi; break;
         case FRAPPE:   t = j.anim_frappe[j.frame % 5]; flip = SDL_FLIP_NONE; break;
         case FRAPPE_G: t = j.anim_frappe_g[j.frame % 5]; flip = SDL_FLIP_NONE; break;
-        case MORT:     t = j.anim_mort[j.frame % 5]; break; // Animation de mort
+        case MORT:     t = j.anim_mort[j.frame % 5]; break;
         default:       t = j.texture_idle; break;
     }
 
@@ -166,6 +160,6 @@ void libererJoueur(Joueur* j) {
         SDL_DestroyTexture(j->anim_saut[i]);
         SDL_DestroyTexture(j->anim_frappe[i]);
         SDL_DestroyTexture(j->anim_frappe_g[i]);
-        SDL_DestroyTexture(j->anim_mort[i]); // Libération mort
+        SDL_DestroyTexture(j->anim_mort[i]);
     }
 }
