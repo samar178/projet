@@ -2,6 +2,7 @@
 
 void initMinimap(Minimap* m, SDL_Renderer* renderer) {
    
+    // Retour aux chemins originaux exacts
     m->backgroundTextures[0] = IMG_LoadTexture(renderer, "minimap/ressources/minimap_bg1.png");
     m->backgroundTextures[1] = IMG_LoadTexture(renderer, "minimap/ressources/minimap_bg2.png");
     m->playerTexture = IMG_LoadTexture(renderer, "minimap/ressources/minimap_j.png");
@@ -11,7 +12,6 @@ void initMinimap(Minimap* m, SDL_Renderer* renderer) {
     m->playerPosition.w = 12; m->playerPosition.h = 21;
     m->ennemiPosition.w = 12; m->ennemiPosition.h = 21;
 }
-
 void updateMinimap(Minimap* m, int absX_joueur, int absX_ennemi) {
     
     float ratio = 480.0f / 9600.0f;
